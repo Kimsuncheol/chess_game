@@ -26,12 +26,13 @@ void main() {
     'setup, board, resignation, result and history form a complete route flow',
     (tester) async {
       await openApp(tester);
-      await tapVisible(tester, 'New game');
+      await tapVisible(tester, 'Play vs AI');
       expect(find.text('Game setup'), findsOneWidget);
       await tapVisible(tester, 'Black');
-      await tapVisible(tester, 'Open preview session');
+      await tapVisible(tester, 'Advanced');
+      await tapVisible(tester, 'Start Game');
       expect(find.text('The board'), findsOneWidget);
-      expect(find.textContaining('Black pieces'), findsOneWidget);
+      expect(find.textContaining('Black pieces · Advanced opponent'), findsOneWidget);
       await tapVisible(tester, 'Resign session');
       await tapVisible(tester, 'Resign');
       expect(find.text('Game result'), findsOneWidget);
@@ -68,7 +69,7 @@ void main() {
       );
       await tester.pageBack();
       await tester.pumpAndSettle();
-      await tapVisible(tester, 'Appearance & settings');
+      await tapVisible(tester, 'Settings');
       expect(
         tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
         ThemeMode.dark,
@@ -110,7 +111,7 @@ void main() {
       expect(tester.takeException(), isNull, reason: route);
     }
     await openApp(tester, route: '/setup');
-    await tapVisible(tester, 'Open preview session');
+    await tapVisible(tester, 'Start Game');
     expect(tester.takeException(), isNull);
     await tapVisible(tester, 'Resign session');
     await tapVisible(tester, 'Resign');

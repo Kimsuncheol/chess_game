@@ -15,11 +15,13 @@ class GameController extends ChangeNotifier {
     required this.rules,
     required this.engine,
     required this.renderer,
-  });
+    Random? random,
+  }) : _random = random ?? Random();
   final GameRepository _repository;
   final ChessRules rules;
   final ChessEngine engine;
   final BoardRenderer renderer;
+  final Random _random;
   List<GameSession> _games = const [];
   String? _activeId;
   bool _busy = false;
@@ -27,7 +29,11 @@ class GameController extends ChangeNotifier {
   String? _error;
   int _nextId = 0;
   List<GameSession> get games => List.unmodifiable(_games);
-  GameSession? get activeGame => find(_activeId);
+  GameSession? get activeGame {
+    final game = find(_activeId);
+    return game != null && !game.isFinished ? game : null;
+  }
+
   bool get busy => _busy;
   String? get error => _error;
   bool get canPlay =>
@@ -42,6 +48,7 @@ class GameController extends ChangeNotifier {
 
   Future<void> load() async {
     _games = await _repository.loadGames();
+    _activeId = null;
     for (final game in _games) {
       if (!game.isFinished) {
         _activeId = game.id;
@@ -56,16 +63,11 @@ class GameController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final color = configuration.color == PlayerColor.random
-          ? (Random().nextBool() ? PlayerColor.white : PlayerColor.black)
-          : configuration.color;
+      final resolvedConfiguration = configuration.resolve(_random);
       final now = DateTime.now();
       final game = GameSession(
         id: '${now.microsecondsSinceEpoch}-${_nextId++}',
-        configuration: GameConfiguration(
-          color: color,
-          difficulty: configuration.difficulty,
-        ),
+        configuration: resolvedConfiguration,
         startedAt: now,
       );
       await _repository.saveGame(game);
