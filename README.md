@@ -6,6 +6,7 @@ Flutter application shell: [app/README.md](app/README.md).
 - [Authoritative Dart chess rules](docs/chess_rules.md)
 - [Local persistence and game history](docs/local_persistence.md)
 - [Flutter–Unity JSON protocol](docs/unity_flutter_bridge.md)
+- [Unity 3D chess scene and BoardRenderer guide](docs/unity_3d_scene.md)
 - [Dart chess rules, library selection and limitations](docs/chess_rules.md)
 
 Start the Android app:

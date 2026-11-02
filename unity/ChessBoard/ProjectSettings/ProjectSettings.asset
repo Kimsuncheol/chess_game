@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!129 &1
+PlayerSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 26
+  productGUID: 42a8e190b7d34c91a2e45f607891bcde
+  AndroidProfiler: 0
+  AndroidFilterTouchesWhenObscured: 1
+  AndroidEnableSustainedPerformanceMode: 0
+  defaultScreenOrientation: 4
+  targetDevice: 2
+  useOnDemandResources: 0
+  accelerometerFrequency: 0
+  companyName: StillChess
+  productName: Still Chess 3D Board
+  defaultCursor: {fileID: 0}
+  cursorHotspot: {x: 0, y: 0}
+  m_SplashScreenBackgroundColor: {r: 0.11, g: 0.12, b: 0.14, a: 1}
+  m_ShowUnitySplashScreen: 0
+  m_ColorSpace: 1
+  m_MTRendering: 1
+  m_MobileMTRendering:
+    Android: 1
+  m_StackTraceTypes: 010000000100000001000000000000000000000001000000
+  iosShowActivityIndicatorOnLoading: -1
+  androidShowActivityIndicatorOnLoading: -1
+  androidUseSwappy: 1
+  bakeCollisionMeshes: 1
+  forceSingleInstance: 0
+  useFlipModelSwapchain: 1
+  resizableWindow: 1
+  useMacAppStoreValidation: 0
+  macAppStoreCategory: public.app-category.board-games
+  gpuSkinning: 0
+  graphicsJobs: 0
+  AllowUnsafeCode: 0
+  overrideDefaultApplicationIdentifier: 1
+  applicationIdentifier:
+    Android: dev.chessboard.chess_game.board
+    Standalone: dev.chessboard.chess_game.board
+  buildNumber:
+    Android: 1
+    Standalone: 1
+  AndroidBundleVersionCode: 1
+  AndroidMinSdkVersion: 26
+  AndroidTargetSdkVersion: 36
+  AndroidPreferredInstallLocation: 1
+  AndroidTargetArchitectures: 2
+  scriptingBackend:
+    Android: 1
+    Standalone: 0
+  il2cppCompilerConfiguration:
+    Android: 1
+  stripEngineCode: 1
+  mipStripping: 1
+  vrSettings:
+    enable360StereoCapture: 0
+
