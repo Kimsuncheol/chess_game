@@ -7,6 +7,7 @@ import '../../../services/chess/chess_rules.dart';
 import '../../../services/stockfish/chess_engine.dart';
 import '../../../services/storage/local_storage.dart';
 import '../../../services/unity/board_renderer.dart';
+import '../../settings/domain/app_settings.dart';
 import '../domain/chess/chess_position.dart';
 import '../domain/game_session.dart';
 
@@ -47,6 +48,8 @@ class GameController extends ChangeNotifier {
   String? _selectedSquare;
   List<String> _legalMovesForSelection = const [];
   PendingPromotion? _pendingPromotion;
+  AppSettings _appSettings = const AppSettings();
+  bool _pendingCameraReset = false;
   String? _error;
   int _nextId = 0;
   int _aiGeneration = 0;
@@ -105,7 +108,31 @@ class GameController extends ChangeNotifier {
       phase: phaseFor(game),
       inputEnabled: isPlayerInputEnabledFor(game),
       cameraFlipped: game.humanColor == PlayerColor.black,
+      soundEnabled: _appSettings.soundEnabled,
+      reducedMotion: _appSettings.reducedMotion,
     );
+  }
+
+  BoardSettingsConfig _buildBoardSettings([GameSession? game]) {
+    final target = game ?? activeGame ?? (_games.isNotEmpty ? _games.first : null);
+    return BoardSettingsConfig(
+      soundEnabled: _appSettings.soundEnabled,
+      reducedMotion: _appSettings.reducedMotion,
+      cameraPreset: 'default',
+      cameraFlipped: target?.humanColor == PlayerColor.black,
+    );
+  }
+
+  Future<void> applySettings(AppSettings settings) async {
+    _appSettings = settings;
+    if (_disposed || !_boardReady) return;
+    try {
+      await renderer.configure(_buildBoardSettings());
+      final active = activeGame;
+      if (active != null) {
+        await renderer.syncSnapshot(buildSnapshot(active));
+      }
+    } catch (_) {}
   }
 
   GameSession? find(String? id) {
@@ -199,6 +226,13 @@ class GameController extends ChangeNotifier {
       if (_disposed) return;
       _boardReady = renderer.isReady;
       final latest = find(gameId) ?? game;
+      if (_boardReady) {
+        await renderer.configure(_buildBoardSettings(latest));
+        if (_pendingCameraReset) {
+          _pendingCameraReset = false;
+          await renderer.resetCamera();
+        }
+      }
       await renderer.syncSnapshot(buildSnapshot(latest));
       if (!_disposed) notifyListeners();
       if (!latest.isFinished &&
@@ -635,6 +669,12 @@ class GameController extends ChangeNotifier {
   Future<void> resetCamera() async {
     try {
       _error = null;
+      if (!_boardReady) {
+        _pendingCameraReset = true;
+        if (!_disposed) notifyListeners();
+        return;
+      }
+      await renderer.configure(_buildBoardSettings());
       await renderer.resetCamera();
       if (!_disposed) notifyListeners();
     } catch (_) {
@@ -676,6 +716,11 @@ class GameController extends ChangeNotifier {
         _boardReady = true;
         _boardError = null;
         _error = null;
+        unawaited(renderer.configure(_buildBoardSettings(active)));
+        if (_pendingCameraReset) {
+          _pendingCameraReset = false;
+          unawaited(renderer.resetCamera());
+        }
         if (active != null) {
           unawaited(_syncRenderer(active));
         }

@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/widgets.dart';
 
 import '../features/game/application/game_controller.dart';
@@ -20,7 +23,9 @@ class AppDependencies {
          renderer: renderer,
          rules: rules,
          engine: engine,
-       );
+       ) {
+    settings.addListener(_syncSettingsToGame);
+  }
 
   factory AppDependencies.placeholder() {
     final storage = MemoryLocalStorage();
@@ -33,13 +38,36 @@ class AppDependencies {
     );
   }
 
+  factory AppDependencies.persistent(
+    Directory directory, {
+    BoardRenderer? renderer,
+    ChessRules? rules,
+    ChessEngine? engine,
+  }) {
+    final storage = FileLocalStorage(directory: directory);
+    return AppDependencies(
+      games: storage,
+      preferences: storage,
+      renderer: renderer ?? PlaceholderUnityRenderer(),
+      rules: rules ?? const StandardChessRules(),
+      engine: engine ?? PlaceholderStockfishEngine(),
+    );
+  }
+
   final SettingsController settings;
   final GameController game;
+
+  void _syncSettingsToGame() {
+    unawaited(game.applySettings(settings.settings));
+  }
+
   Future<void> initialize() async {
     await Future.wait([settings.load(), game.load()]);
+    await game.applySettings(settings.settings);
   }
 
   void dispose() {
+    settings.removeListener(_syncSettingsToGame);
     settings.dispose();
     game.dispose();
     game.renderer.dispose();

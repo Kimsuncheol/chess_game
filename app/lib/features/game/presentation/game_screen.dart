@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/app_dependencies.dart';
 import '../../../core/widgets/page_layout.dart';
+import '../../history/presentation/history_screen.dart';
 import '../application/game_controller.dart';
 import '../domain/game_session.dart';
 import 'board_preview.dart';
@@ -177,11 +178,21 @@ class _GameScreenState extends State<GameScreen> {
                 const SizedBox(height: 12),
                 if (game.moves.isEmpty)
                   const Text('No moves yet. Every good game begins here.')
-                else
+                else ...[
                   Text(
-                    game.moves.join(' · '),
+                    game.sanMoves.isNotEmpty
+                        ? game.sanMoves.join(' · ')
+                        : game.moves.join(' · '),
                     key: const ValueKey('move-list-moves'),
                   ),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    key: const ValueKey('game-inspect-moves-button'),
+                    onPressed: () => showGameMoveInspector(context, game),
+                    icon: const Icon(Icons.format_list_numbered_rounded),
+                    label: const Text('Inspect moves'),
+                  ),
+                ],
               ],
             ),
           ),
@@ -253,7 +264,7 @@ class _GameScreenState extends State<GameScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Session-only storage · Available until you close the app',
+          'Saved locally on this device · No account required',
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodySmall,
         ),

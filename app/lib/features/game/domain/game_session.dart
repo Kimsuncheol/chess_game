@@ -166,6 +166,7 @@ class GameSession {
   String? get termination =>
       _explicitTermination ?? position.status.termination?.label;
   bool get isFinished => result != null;
+  String get pgn => toPgn();
 
   PlayerColor get humanColor =>
       configuration.color == PlayerColor.black
@@ -248,28 +249,42 @@ class GameSession {
     position: ChessPosition.initial(),
   );
 
-  String toPgn() => position.toPgn(
-    headers: {
-      'White': humanColor == PlayerColor.white
-          ? 'Player'
-          : 'AI (${configuration.difficulty.label})',
-      'Black': humanColor == PlayerColor.black
-          ? 'Player'
-          : 'AI (${configuration.difficulty.label})',
-    },
-  );
+  String toPgn() {
+    final d = endedAt ?? startedAt;
+    final dateTag =
+        '${d.year.toString().padLeft(4, '0')}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
+    return position.toPgn(
+      headers: {
+        'Date': dateTag,
+        'White': humanColor == PlayerColor.white
+            ? 'Player'
+            : 'AI (${configuration.difficulty.label})',
+        'Black': humanColor == PlayerColor.black
+            ? 'Player'
+            : 'AI (${configuration.difficulty.label})',
+      },
+    );
+  }
 
   Map<String, Object?> toJson() => {
+    'schemaVersion': 1,
     'id': id,
     'configuration': configuration.toJson(),
+    'playerColor': humanColor.name,
+    'difficulty': configuration.difficulty.name,
     'startedAt': startedAt.toIso8601String(),
-    'revision': revision,
-    'position': position.toJson(),
     'endedAt': endedAt?.toIso8601String(),
+    'date': (endedAt ?? startedAt).toIso8601String(),
+    'revision': revision,
+    'result': result,
+    'termination': termination,
+    'pgn': toPgn(),
+    'position': position.toJson(),
   };
 
   factory GameSession.fromJson(Map<String, Object?> json) {
     if (json['id'] is! String ||
+        (json['id'] as String).trim().isEmpty ||
         json['configuration'] is! Map ||
         json['startedAt'] is! String ||
         json['revision'] is! int ||
@@ -283,6 +298,23 @@ class GameSession {
     final endedAtStr = json['endedAt'];
     if (endedAtStr != null && endedAtStr is! String) {
       throw const FormatException('Invalid saved game endedAt.');
+    }
+    final savedResult = json['result'];
+    if (savedResult != null && savedResult is! String) {
+      throw const FormatException('Invalid saved game result.');
+    }
+    final expectedResult = position.status.isFinished
+        ? position.status.result
+        : null;
+    if (savedResult != null && savedResult != expectedResult) {
+      throw const FormatException(
+        'Saved session result does not match adjudicated position.',
+      );
+    }
+    final savedPgn = json['pgn'];
+    if (savedPgn != null &&
+        (savedPgn is! String || savedPgn.trim().isEmpty)) {
+      throw const FormatException('Invalid saved game PGN.');
     }
     return GameSession(
       id: json['id'] as String,

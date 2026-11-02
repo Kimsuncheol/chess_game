@@ -27,4 +27,30 @@ class AppSettings {
     soundEnabled: soundEnabled ?? this.soundEnabled,
     reducedMotion: reducedMotion ?? this.reducedMotion,
   );
+
+  Map<String, Object?> toJson() => {
+    'schemaVersion': 1,
+    'appearance': appearance.name,
+    'soundEnabled': soundEnabled,
+    'reducedMotion': reducedMotion,
+  };
+
+  factory AppSettings.fromJson(Map<String, Object?> json) {
+    final appearance =
+        Appearance.values
+            .where((mode) => mode.name == json['appearance'])
+            .firstOrNull ??
+        Appearance.system;
+    final soundEnabled = json['soundEnabled'] is bool
+        ? json['soundEnabled'] as bool
+        : true;
+    final reducedMotion = json['reducedMotion'] is bool
+        ? json['reducedMotion'] as bool
+        : false;
+    return AppSettings(
+      appearance: appearance,
+      soundEnabled: soundEnabled,
+      reducedMotion: reducedMotion,
+    );
+  }
 }

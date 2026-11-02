@@ -16,17 +16,20 @@ class SettingsController extends ChangeNotifier {
 
   Future<void> load() async {
     _settings = await _repository.loadSettings();
+    if (!_disposed) notifyListeners();
   }
 
   Future<void> update(AppSettings next) async {
     if (_saving || _disposed) return;
+    final previous = _settings;
     _saving = true;
     _error = null;
+    _settings = next;
     notifyListeners();
     try {
       await _repository.saveSettings(next);
-      if (!_disposed) _settings = next;
     } catch (_) {
+      if (!_disposed) _settings = previous;
       _error = 'Your preferences could not be saved. Please try again.';
     } finally {
       _saving = false;

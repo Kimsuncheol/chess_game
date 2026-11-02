@@ -16,6 +16,20 @@ enum GamePhase {
   final String label;
 }
 
+class BoardSettingsConfig {
+  const BoardSettingsConfig({
+    this.soundEnabled = true,
+    this.reducedMotion = false,
+    this.cameraPreset = 'default',
+    this.cameraFlipped = false,
+  });
+
+  final bool soundEnabled;
+  final bool reducedMotion;
+  final String cameraPreset;
+  final bool cameraFlipped;
+}
+
 class BoardSnapshot {
   const BoardSnapshot({
     required this.game,
@@ -25,6 +39,9 @@ class BoardSnapshot {
     this.phase = GamePhase.humanTurn,
     this.inputEnabled = false,
     this.cameraFlipped = false,
+    this.soundEnabled = true,
+    this.reducedMotion = false,
+    this.cameraPreset = 'default',
   });
 
   final GameSession game;
@@ -34,6 +51,9 @@ class BoardSnapshot {
   final GamePhase phase;
   final bool inputEnabled;
   final bool cameraFlipped;
+  final bool soundEnabled;
+  final bool reducedMotion;
+  final String cameraPreset;
 
   String get gameId => game.id;
   int get revision => game.revision;
@@ -81,10 +101,12 @@ abstract interface class BoardRenderer {
   bool get isReady;
   bool get inputEnabled;
   BoardSnapshot? get currentSnapshot;
+  BoardSettingsConfig get currentSettings;
   Stream<BoardInteraction> get interactions;
   Stream<BoardBridgeEvent> get bridgeEvents;
   Future<void> attach(BoardSnapshot snapshot);
   Future<void> syncSnapshot(BoardSnapshot snapshot);
+  Future<void> configure(BoardSettingsConfig settings);
   Future<void> setInputEnabled(bool enabled);
   Future<void> render(GameSession game);
   Future<void> resetCamera();
@@ -100,9 +122,11 @@ class PlaceholderUnityRenderer implements BoardRenderer {
   final _bridgeEvents = StreamController<BoardBridgeEvent>.broadcast();
   GameSession? lastSnapshot;
   BoardSnapshot? _currentSnapshot;
+  BoardSettingsConfig _currentSettings = const BoardSettingsConfig();
   bool _ready = true;
   bool _inputEnabled = false;
   int attachmentCount = 0;
+  int cameraResetCount = 0;
 
   @override
   bool get isAvailable => false;
@@ -112,6 +136,8 @@ class PlaceholderUnityRenderer implements BoardRenderer {
   bool get inputEnabled => _inputEnabled;
   @override
   BoardSnapshot? get currentSnapshot => _currentSnapshot;
+  @override
+  BoardSettingsConfig get currentSettings => _currentSettings;
   @override
   Stream<BoardInteraction> get interactions => _interactions.stream;
   @override
@@ -124,6 +150,12 @@ class PlaceholderUnityRenderer implements BoardRenderer {
     _currentSnapshot = snapshot;
     lastSnapshot = snapshot.game;
     _inputEnabled = snapshot.inputEnabled;
+    _currentSettings = BoardSettingsConfig(
+      soundEnabled: snapshot.soundEnabled,
+      reducedMotion: snapshot.reducedMotion,
+      cameraPreset: snapshot.cameraPreset,
+      cameraFlipped: snapshot.cameraFlipped,
+    );
   }
 
   @override
@@ -131,6 +163,11 @@ class PlaceholderUnityRenderer implements BoardRenderer {
     _currentSnapshot = snapshot;
     lastSnapshot = snapshot.game;
     _inputEnabled = snapshot.inputEnabled;
+  }
+
+  @override
+  Future<void> configure(BoardSettingsConfig settings) async {
+    _currentSettings = settings;
   }
 
   @override
@@ -146,6 +183,9 @@ class PlaceholderUnityRenderer implements BoardRenderer {
         phase: current.phase,
         inputEnabled: enabled,
         cameraFlipped: current.cameraFlipped,
+        soundEnabled: current.soundEnabled,
+        reducedMotion: current.reducedMotion,
+        cameraPreset: current.cameraPreset,
       );
     }
   }
@@ -162,11 +202,16 @@ class PlaceholderUnityRenderer implements BoardRenderer {
       phase: current?.phase ?? GamePhase.humanTurn,
       inputEnabled: _inputEnabled,
       cameraFlipped: game.humanColor == PlayerColor.black,
+      soundEnabled: _currentSettings.soundEnabled,
+      reducedMotion: _currentSettings.reducedMotion,
+      cameraPreset: _currentSettings.cameraPreset,
     );
   }
 
   @override
-  Future<void> resetCamera() async {}
+  Future<void> resetCamera() async {
+    cameraResetCount++;
+  }
 
   @override
   void detach() {
@@ -200,7 +245,9 @@ class MockUnityBoardRenderer implements BoardRenderer {
 
   Completer<void>? _pendingReadyCompleter;
   BoardSnapshot? _currentSnapshot;
+  BoardSettingsConfig _currentSettings = const BoardSettingsConfig();
   final List<BoardSnapshot> snapshotHistory = [];
+  final List<BoardSettingsConfig> settingsHistory = [];
   bool _ready;
   bool _inputEnabled = false;
   int attachmentCount = 0;
@@ -214,6 +261,8 @@ class MockUnityBoardRenderer implements BoardRenderer {
   bool get inputEnabled => _inputEnabled;
   @override
   BoardSnapshot? get currentSnapshot => _currentSnapshot;
+  @override
+  BoardSettingsConfig get currentSettings => _currentSettings;
   @override
   Stream<BoardInteraction> get interactions => _interactions.stream;
   @override
@@ -236,6 +285,12 @@ class MockUnityBoardRenderer implements BoardRenderer {
     _ready = true;
     _currentSnapshot = snapshot;
     _inputEnabled = snapshot.inputEnabled;
+    _currentSettings = BoardSettingsConfig(
+      soundEnabled: snapshot.soundEnabled,
+      reducedMotion: snapshot.reducedMotion,
+      cameraPreset: snapshot.cameraPreset,
+      cameraFlipped: snapshot.cameraFlipped,
+    );
     snapshotHistory.add(snapshot);
   }
 
@@ -299,6 +354,13 @@ class MockUnityBoardRenderer implements BoardRenderer {
   }
 
   @override
+  Future<void> configure(BoardSettingsConfig settings) async {
+    if (!_ready) return;
+    _currentSettings = settings;
+    settingsHistory.add(settings);
+  }
+
+  @override
   Future<void> setInputEnabled(bool enabled) async {
     _inputEnabled = enabled;
     final current = _currentSnapshot;
@@ -311,6 +373,9 @@ class MockUnityBoardRenderer implements BoardRenderer {
         phase: current.phase,
         inputEnabled: enabled,
         cameraFlipped: current.cameraFlipped,
+        soundEnabled: current.soundEnabled,
+        reducedMotion: current.reducedMotion,
+        cameraPreset: current.cameraPreset,
       );
       _currentSnapshot = updated;
       snapshotHistory.add(updated);
@@ -331,6 +396,9 @@ class MockUnityBoardRenderer implements BoardRenderer {
       phase: current?.phase ?? GamePhase.humanTurn,
       inputEnabled: _inputEnabled,
       cameraFlipped: game.humanColor == PlayerColor.black,
+      soundEnabled: _currentSettings.soundEnabled,
+      reducedMotion: _currentSettings.reducedMotion,
+      cameraPreset: _currentSettings.cameraPreset,
     );
     _currentSnapshot = updated;
     snapshotHistory.add(updated);
