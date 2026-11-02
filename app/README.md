@@ -1,6 +1,6 @@
 # Still Chess — Flutter application
 
-An Android-first Flutter shell for the offline 3D chess architecture. The interface uses Material 3, neutral colors, responsive cards, and system/light/dark appearance. This milestone supplies app navigation and session orchestration; it does not implement playable chess.
+An Android-first Flutter shell for the offline 3D chess architecture. The interface uses Material 3, neutral colors, responsive cards, and system/light/dark appearance. This milestone supplies app navigation, authoritative Dart rules and session orchestration; the board and engine are still previews, so interactive play is not enabled.
 
 ## Run
 
@@ -43,7 +43,7 @@ lib/
       presentation/
   services/
     unity/             BoardRenderer contract and placeholder
-    chess/             ChessRules contract and fail-closed placeholder
+    chess/             ChessRules adapter to immutable Dart state
     stockfish/         ChessEngine contract and unavailable placeholder
     storage/           Game/SettingsRepository contracts and memory adapter
 ```
@@ -52,7 +52,7 @@ lib/
 
 Feature-scoped `ChangeNotifier` controllers expose immutable state through getters. Widgets subscribe using `ListenableBuilder`; `AppScope` only resolves dependencies. `AppDependencies` is the composition root and supports injecting test doubles and later production adapters. The app owns/disposes its controllers, router and services.
 
-This approach fits the small offline shell: it uses Flutter's observable APIs, keeps side effects out of screens, avoids code generation, and makes failure/concurrency behavior directly testable. Separate settings and game controllers prevent unrelated game notifications from rebuilding the app theme. A controller's asynchronous commands publish state only after repository writes succeed and guard overlapping writes/disposal. A future rules/AI implementation must add the full serialized move queue and session/revision checks specified by the architecture; these placeholders do not claim to implement that gameplay pipeline. [Flutter ChangeNotifier documentation](https://api.flutter.dev/flutter/foundation/ChangeNotifier-class.html).
+This approach fits the small offline shell: it uses Flutter's observable APIs, keeps side effects out of screens, avoids code generation, and makes failure/concurrency behavior directly testable. Separate settings and game controllers prevent unrelated game notifications from rebuilding the app theme. A controller's asynchronous commands publish state only after repository writes succeed and guard overlapping writes/disposal. Game moves and draw claims now pass through one guarded controller boundary with actor-turn and revision checks; native adapter sessions and engine search tokens still need integration. [Flutter ChangeNotifier documentation](https://api.flutter.dev/flutter/foundation/ChangeNotifier-class.html).
 
 `go_router` is used for Router-based navigation and Android Back behavior; route construction is centralized in `app/app_router.dart`. Screen arguments use path parameters rather than unsafe object casts. Missing session IDs and unknown paths display recovery screens. [go_router documentation](https://pub.dev/packages/go_router).
 
@@ -70,7 +70,7 @@ Setup replaces its route with the board; ending a session navigates to its resul
 ## Current service behavior
 
 - **Unity:** no plugin selected or native Unity runtime included. `PlaceholderUnityRenderer` holds a supplied Flutter snapshot but remains unavailable. The visible 2D starting-board illustration is decorative, labeled as a preview, and accepts no moves. Camera control is disabled until a renderer is available.
-- **Rules:** no legal moves returned; applying a move throws `UnsupportedError`. No unvalidated move can enter the game state.
+- **Rules:** `StandardChessRules` uses pinned MIT-licensed Bishop 1.4.4 behind an immutable Dart aggregate. Legal moves, special moves, draw claims/results, FEN/JSON restore, replay and PGN export are implemented. See [rule selection, API and limitations](../docs/chess_rules.md). The unavailable rules double is for explicit tests only.
 - **Stockfish:** no engine binary or JNI library included. Searches fail explicitly; no fabricated AI response. Cancel/dispose are safe lifecycle placeholders.
 - **Local storage:** an injected in-memory repository backs the current session's preferences and history. All data resets on process exit. This is deliberately not durable SQLite storage yet. Android cloud/device backup is excluded.
 
@@ -86,4 +86,4 @@ Content has a bounded reading width. Wide layouts place the board beside text; c
 
 Tests cover navigation through setup/game/result/history, invalid routes, system and explicit appearance changes across navigation, 320 dp screens at 200% text, wide layout, Android touch-target/label/contrast guidelines, concurrent creation, failed writes, fail-closed rules, settings save failure and result persistence into the injected repository.
 
-Follow [the architecture](../docs/architecture.md) and [bridge contract](../docs/unity_flutter_bridge.md) when replacing placeholders. The Flutter/Unity compatibility spike, real Dart rules, Stockfish packaging, SQLite migrations, real-device performance and Google Play/license gates remain outstanding. Do not treat this shell or its debug APK as a production-ready game.
+Follow [the architecture](../docs/architecture.md) and [bridge contract](../docs/unity_flutter_bridge.md) when replacing placeholders. The Flutter/Unity compatibility spike, Stockfish packaging, SQLite migrations, real-device performance and Google Play/license gates remain outstanding. Dart rules are implemented with explicitly limited dead-position detection. Do not treat this shell or its debug APK as a production-ready game.

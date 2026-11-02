@@ -28,7 +28,7 @@ class AppDependencies {
       games: storage,
       preferences: storage,
       renderer: PlaceholderUnityRenderer(),
-      rules: PlaceholderChessRules(),
+      rules: const StandardChessRules(),
       engine: PlaceholderStockfishEngine(),
     );
   }

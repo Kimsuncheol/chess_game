@@ -108,7 +108,7 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
               title: 'Preview session',
               icon: Icons.view_in_ar_outlined,
               message:
-                  'You can explore the board screen and session controls. Play will be available when the 3D board, rules and opponent are connected.',
+                  'You can explore the board screen and session controls. Play will be available when the 3D board and opponent are connected.',
             ),
             if (controller.error != null) ErrorNotice(controller.error!),
             const SizedBox(height: 28),

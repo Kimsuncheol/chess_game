@@ -4,6 +4,7 @@ Flutter application shell: [app/README.md](app/README.md).
 
 - [Architecture and implementation plan](docs/architecture.md)
 - [Flutter–Unity JSON protocol](docs/unity_flutter_bridge.md)
+- [Dart chess rules, library selection and limitations](docs/chess_rules.md)
 
 Start the Android app:
 
@@ -13,4 +14,4 @@ flutter pub get
 flutter run
 ```
 
-The six-screen shell currently uses explicit placeholder integrations and session-only storage. Unity, legal chess moves, Stockfish, and durable storage are not connected yet.
+The six-screen shell currently uses explicit placeholder integrations and session-only storage. Authoritative Dart rules, move history and PGN export are implemented. Unity, Stockfish and durable storage are not connected yet.
