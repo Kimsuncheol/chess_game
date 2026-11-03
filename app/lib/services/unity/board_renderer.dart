@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../features/game/domain/game_session.dart';
+import 'unity_bridge_protocol.dart';
 
 enum GamePhase {
   loading('Loading 3D board…'),
@@ -248,10 +249,14 @@ class MockUnityBoardRenderer implements BoardRenderer {
   BoardSettingsConfig _currentSettings = const BoardSettingsConfig();
   final List<BoardSnapshot> snapshotHistory = [];
   final List<BoardSettingsConfig> settingsHistory = [];
+  final List<String> outboundJsonMessages = [];
   bool _ready;
   bool _inputEnabled = false;
   int attachmentCount = 0;
   int cameraResetCount = 0;
+  int _outboundSequence = 0;
+
+  String get currentSessionId => 'session-$attachmentCount';
 
   @override
   bool get isAvailable => true;
@@ -283,6 +288,7 @@ class MockUnityBoardRenderer implements BoardRenderer {
       await _pendingReadyCompleter!.future;
     }
     _ready = true;
+    _outboundSequence = 0;
     _currentSnapshot = snapshot;
     _inputEnabled = snapshot.inputEnabled;
     _currentSettings = BoardSettingsConfig(
@@ -292,6 +298,15 @@ class MockUnityBoardRenderer implements BoardRenderer {
       cameraFlipped: snapshot.cameraFlipped,
     );
     snapshotHistory.add(snapshot);
+    final seq = ++_outboundSequence;
+    outboundJsonMessages.add(
+      UnityBridgeProtocol.encodeBoardSnapshot(
+        snapshot: snapshot,
+        messageId: 'f-snapshot-$seq',
+        sessionId: currentSessionId,
+        sequence: seq,
+      ),
+    );
   }
 
   void completeReady() {
@@ -328,18 +343,34 @@ class MockUnityBoardRenderer implements BoardRenderer {
     }
   }
 
+  /// Receives a raw `player.squareSelected` JSON message from Unity, validates
+  /// the protocol version, session, and input permission, and emits a
+  /// [BoardInteraction] to the game controller.
+  bool receiveUnityMessageJson(String rawJson) {
+    if (!_ready || !_inputEnabled) return false;
+    final interaction = UnityBridgeProtocol.tryParseSquareSelectedJson(
+      rawJson,
+      expectedSessionId: attachmentCount > 0 ? currentSessionId : null,
+    );
+    if (interaction == null) return false;
+    if (!_interactions.isClosed) {
+      _interactions.add(interaction);
+    }
+    return true;
+  }
+
   void simulateSquareTap(String square, {String? gameId, int? revision}) {
     final snapshot = _currentSnapshot;
     if (snapshot == null) return;
-    if (!_interactions.isClosed) {
-      _interactions.add(
-        BoardInteraction(
-          gameId: gameId ?? snapshot.gameId,
-          revision: revision ?? snapshot.revision,
-          square: square,
-        ),
-      );
-    }
+    final rawJson = UnityBridgeProtocol.encodeSquareSelected(
+      messageId: 'u-select-${snapshotHistory.length + 1}',
+      sessionId: currentSessionId,
+      gameId: gameId ?? snapshot.gameId,
+      revision: revision ?? snapshot.revision,
+      sequence: snapshotHistory.length + 1,
+      square: square,
+    );
+    receiveUnityMessageJson(rawJson);
   }
 
   @override
@@ -348,9 +379,43 @@ class MockUnityBoardRenderer implements BoardRenderer {
       throw StateError('Unity bridge message delivery failed.');
     }
     if (!_ready) return;
+    final previous = _currentSnapshot;
     _currentSnapshot = snapshot;
     _inputEnabled = snapshot.inputEnabled;
     snapshotHistory.add(snapshot);
+
+    final seq = ++_outboundSequence;
+    final samePositionHighlightUpdate =
+        previous != null &&
+        previous.gameId == snapshot.gameId &&
+        previous.revision == snapshot.revision &&
+        previous.fen == snapshot.fen &&
+        (previous.selectedSquare != snapshot.selectedSquare ||
+            previous.legalMoves.length != snapshot.legalMoves.length);
+
+    if (samePositionHighlightUpdate) {
+      outboundJsonMessages.add(
+        UnityBridgeProtocol.encodeLegalMovesHighlight(
+          messageId: 'f-highlight-$seq',
+          sessionId: currentSessionId,
+          gameId: snapshot.gameId,
+          revision: snapshot.revision,
+          sequence: seq,
+          selectedSquare: snapshot.selectedSquare,
+          legalMovesUci: snapshot.legalMoves,
+          inputEnabled: snapshot.inputEnabled,
+        ),
+      );
+    } else {
+      outboundJsonMessages.add(
+        UnityBridgeProtocol.encodeBoardSnapshot(
+          snapshot: snapshot,
+          messageId: 'f-snapshot-$seq',
+          sessionId: currentSessionId,
+          sequence: seq,
+        ),
+      );
+    }
   }
 
   @override

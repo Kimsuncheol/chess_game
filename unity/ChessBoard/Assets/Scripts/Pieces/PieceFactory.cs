@@ -71,9 +71,35 @@ namespace StillChess.Board.Pieces
                     break;
             }
 
+            float colliderHeight = GetPieceColliderHeight(data.Type);
+            var pieceCollider = root.AddComponent<BoxCollider>();
+            pieceCollider.center = new Vector3(0.0f, colliderHeight * 0.5f, 0.0f);
+            pieceCollider.size = new Vector3(0.66f, colliderHeight, 0.66f);
+
             var pieceView = root.AddComponent<ChessPieceView>();
             pieceView.Initialize(data, localPosition);
             return pieceView;
+        }
+
+        private static float GetPieceColliderHeight(PieceType type)
+        {
+            switch (type)
+            {
+                case PieceType.Pawn:
+                    return 0.56f;
+                case PieceType.Rook:
+                    return 0.64f;
+                case PieceType.Knight:
+                    return 0.68f;
+                case PieceType.Bishop:
+                    return 0.78f;
+                case PieceType.Queen:
+                    return 0.88f;
+                case PieceType.King:
+                    return 0.98f;
+                default:
+                    return 0.65f;
+            }
         }
 
         private static void BuildPawn(Transform root, Material primary, Material accent)

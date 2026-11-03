@@ -17,25 +17,29 @@ unity/ChessBoard/
 │   │   ├── ChessBoard.Runtime.asmdef       # Runtime assembly definition (StillChess.Board)
 │   │   ├── Board/
 │   │   │   ├── ChessBoardGenerator.cs      # Generates 64 squares (a1..h8) + board border frame
-│   │   │   └── ChessSquareView.cs          # Per-square coordinate metadata & highlight material swapping
+│   │   │   └── ChessSquareView.cs          # Per-square coordinate metadata & highlight markers/materials
+│   │   ├── Bridge/
+│   │   │   ├── BridgeProtocolMessages.cs   # Normative v1 JSON protocol DTOs & player.squareSelected builder
+│   │   │   └── IFlutterBridgeTransport.cs  # Transport abstraction for Unity -> Flutter JSON messages
 │   │   ├── Camera/
-│   │   │   └── ChessCameraController.cs    # Bounded White/Black perspective camera & ResetCamera()
+│   │   │   └── ChessCameraController.cs    # Bounded White/Black perspective camera, orbit/zoom, & ResetCamera()
 │   │   ├── Core/
 │   │   │   ├── FenPlacementParser.cs       # Structural 6-field FEN parser (presentation only; zero chess rules)
 │   │   │   └── SquareCoordinates.cs        # Algebraic a1..h8 <-> 0..7 file/rank <-> 3D local position mapping
 │   │   ├── Interaction/
-│   │   │   └── BoardTouchRaycaster.cs      # Mobile touch/mouse raycasting -> algebraic square intents
+│   │   │   └── BoardTouchRaycaster.cs      # Touch & mouse raycasting, drag/pinch disambiguation, & JSON dispatch
 │   │   ├── Materials/
 │   │   │   └── MobileMaterialPalette.cs    # Shared, GPU-instanced materials for squares, pieces, & highlights
 │   │   ├── Pieces/
 │   │   │   ├── ChessPieceView.cs           # Piece instance metadata (Square, PieceColor, PieceType, FenChar)
-│   │   │   └── PieceFactory.cs             # Builds distinct low-poly placeholder hierarchies for P/N/B/R/Q/K
+│   │   │   └── PieceFactory.cs             # Builds distinct low-poly placeholder hierarchies + root BoxCollider
 │   │   └── Rendering/
-│   │       └── BoardRenderer.cs            # Reconstructs the 3D board atomically from FEN or bridge JSON snapshots
+│   │       └── BoardRenderer.cs            # Reconstructs board from FEN, renders highlights, & handles bridge JSON
 │   └── Tests/
 │       └── EditMode/
 │           ├── ChessBoard.EditorTests.asmdef
-│           └── BoardRendererEditModeTests.cs
+│           ├── BoardRendererEditModeTests.cs
+│           └── BoardTouchInteractionTests.cs
 ├── Packages/
 │   └── manifest.json
 └── ProjectSettings/
@@ -84,10 +88,16 @@ unity/ChessBoard/
 
 1. **Shared GPU-Instanced Materials**: `MobileMaterialPalette` creates a single set of shared `Material` instances with `enableInstancing = true` using mobile-friendly shaders (`Universal Render Pipeline/Simple Lit` or `Mobile/Diffuse` with `Standard` fallback). No per-square or per-piece material copies are allocated.
 2. **Low Collider & Shadow Overhead**:
-   - Child primitive parts on pieces have their `Collider` components stripped immediately; raycasting uses only the board tiles (`ChessSquareView`).
+   - Child primitive parts on pieces have their `Collider` components stripped immediately; each `ChessPieceView` root has a single lightweight `BoxCollider` sized to the piece silhouette, and each board tile (`ChessSquareView`) has a single `BoxCollider`.
    - Board squares disable shadow casting (`ShadowCastingMode.Off`) and light/reflection probes (`LightProbeUsage.Off`, `ReflectionProbeUsage.Off`).
    - `QualitySettings.asset` uses a single directional light, medium hard shadows, and Android frame pacing (`androidUseSwappy: 1`).
-3. **Zero Independent Chess Rules in Unity**:
+3. **Touch & Mouse Interaction (`BoardTouchRaycaster`)**:
+   - **Piece & Square Picking**: Raycasts hit either a 3D piece collider (`ChessPieceView`) or a board square collider (`ChessSquareView`) and resolve both to the canonical algebraic square (`a1`–`h8`, e.g., `"e2"`).
+   - **JSON Bridge Dispatch**: Tapping a piece or square calls `BoardRenderer.ReportSquareSelected`, which serializes and sends a version 1 `player.squareSelected` JSON message (`protocolVersion: 1`, `type: "player.squareSelected"`, `payload: { "square": "e2", "interaction": "tap", "selectionRequestId": ... }`).
+   - **Highlights from Flutter**: `BoardRenderer.ReceiveBridgeMessage` processes `legalMoves.highlight` and `board.snapshot` messages from Flutter to display `SquareHighlightState.Selected`, `SquareHighlightState.LegalQuiet`, and `SquareHighlightState.LegalCapture` indicators on the 3D squares.
+   - **Input Gate**: Whenever `BoardRenderer.InputEnabled` is `false` (such as while the AI is thinking, when paused, or when `game.status` disables input), all board taps are ignored.
+   - **Gesture Disambiguation**: Single-finger/mouse drags exceeding `maxTapDisplacementPixels` (`16 px`) orbit the camera via `ChessCameraController.OrbitByScreenDelta`, and two-finger pinch gestures zoom via `ChessCameraController.ZoomByPinchDelta`; neither gesture emits a board tap on release.
+4. **Zero Independent Chess Rules in Unity**:
    - In accordance with [`docs/unity_flutter_bridge.md`](unity_flutter_bridge.md), Unity never generates legal moves, checks turn order, or adjudicates checkmate/draw results.
    - `BoardRenderer.TryApplyFenSnapshot(string fen, out string error)` and `BoardRenderer.TryApplySnapshotJson(string json, out string error)` validate the incoming 6-field FEN structure first and atomically reconstruct all pieces from the FEN placement field. If a FEN string is malformed, the existing board visual state is preserved untouched.
 

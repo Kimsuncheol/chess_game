@@ -24,6 +24,7 @@ namespace StillChess.Board.Materials
         // Highlight colors.
         public static readonly Color DefaultSelectedSquareColor = new Color(0.84f, 0.68f, 0.31f, 1.0f);
         public static readonly Color DefaultLegalMoveSquareColor = new Color(0.42f, 0.67f, 0.49f, 1.0f);
+        public static readonly Color DefaultLegalCaptureSquareColor = new Color(0.84f, 0.44f, 0.36f, 1.0f);
 
         public Material LightSquareMaterial { get; }
         public Material DarkSquareMaterial { get; }
@@ -34,6 +35,7 @@ namespace StillChess.Board.Materials
         public Material BlackPieceAccentMaterial { get; }
         public Material SelectedSquareMaterial { get; }
         public Material LegalMoveSquareMaterial { get; }
+        public Material LegalCaptureSquareMaterial { get; }
 
         public MobileMaterialPalette()
         {
@@ -50,6 +52,7 @@ namespace StillChess.Board.Materials
 
             SelectedSquareMaterial = CreateSharedMaterial("Mat_Square_Selected", shader, DefaultSelectedSquareColor, smoothness: 0.25f);
             LegalMoveSquareMaterial = CreateSharedMaterial("Mat_Square_LegalMove", shader, DefaultLegalMoveSquareColor, smoothness: 0.25f);
+            LegalCaptureSquareMaterial = CreateSharedMaterial("Mat_Square_LegalCapture", shader, DefaultLegalCaptureSquareColor, smoothness: 0.25f);
         }
 
         public Material GetSquareMaterial(SquareCoord square) =>
@@ -127,6 +130,7 @@ namespace StillChess.Board.Materials
             DestroyMaterial(BlackPieceAccentMaterial);
             DestroyMaterial(SelectedSquareMaterial);
             DestroyMaterial(LegalMoveSquareMaterial);
+            DestroyMaterial(LegalCaptureSquareMaterial);
         }
 
         private static void DestroyMaterial(Material material)
